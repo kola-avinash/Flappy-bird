@@ -1,5 +1,7 @@
+import sys
 import pygame
 import random
+# from policy import get_state
 
 # Initialize Pygame
 pygame.init()
@@ -59,41 +61,47 @@ bird = Bird()
 pipes = []
 score = 0
 
+def get_state():
+    bird_state = [bird.y, bird.velocity]  # Example: Bird's position and velocity
+    pipe_state = []  # Example: Distance to the nearest pipe
+    for pipe in pipes:
+        if pipe.x > bird.x:
+            pipe_state.append(pipe.x - bird.x)
+    if not pipe_state:
+        pipe_state.append(SCREEN_WIDTH)  # If no pipes ahead, consider a distant pipe
+    return bird_state + pipe_state
+
 # Function to display score
 def display_score():
     score_surface = SCORE_FONT.render(f"Score: {score}", True, (0, 0, 0))
     screen.blit(score_surface, (10, 10))
-
-# Function to check if restart button is clicked
-def is_restart_clicked(mouse_pos):
-    restart_rect = restart_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
-    return restart_rect.collidepoint(mouse_pos)
 
 # Main game loop
 running = True
 clock = pygame.time.Clock()
 while running:
     restart = False  # Initialize restart flag
-    
+    states = []
+    actions = []
+    rewards = []
     while not restart:
+        state = get_state()
+        print(state)
+        states.append(state)
+        # action = policy_network(state)  # Sample action from policy network
+        # reward = 1 if bird is alive else -1  # Define reward
         for event in pygame.event.get():
+            state = get_state()
+            states.append(state)
             if event.type == pygame.QUIT:
-                running = False
-                restart = True  # Exit restart loop if user quits
+                running = True
+                restart = False # Exit restart loop if user quits
+                print(states)
+                sys.exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     bird.flap()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = pygame.mouse.get_pos()
-                if is_restart_clicked(mouse_pos):
-                    # Reset variables
-                    bird = Bird()
-                    pipes = []
-                    score = 0
-                    restart = True  # Exit restart loop if restart button clicked
-                    # Reset bird position
-                    bird.y = SCREEN_HEIGHT // 2
-                    
+
         # Main game logic here...
 
         # Update bird
@@ -130,40 +138,22 @@ while running:
 
         # Cap the frame rate
         clock.tick(30)
+    
+    print(states)
 
-    # Game over message
-    game_over_font = pygame.font.Font(None, 48)
-    game_over_surface = game_over_font.render("Game Over", True, (255, 0, 0))
-    game_over_rect = game_over_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
-
-    # Restart feature
-    restart_font = pygame.font.Font(None, 36)
-    restart_surface = restart_font.render("Restart", True, (0, 0, 0))
-    restart_rect = restart_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
-
-    # Draw game over message and restart button
-    screen.blit(game_over_surface, game_over_rect)
-    screen.blit(restart_surface, restart_rect)
-    pygame.display.update()
-
-    # Restart loop
     while restart:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 restart = False
-                running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = pygame.mouse.get_pos()
-                if is_restart_clicked(mouse_pos):
-                    # Reset variables
-                    bird = Bird()
-                    pipes = []
-                    score = 0
-                    running = True
-                    restart = False
-                    # Reset bird position
-                    bird.y = SCREEN_HEIGHT // 2
+                pygame.quit()
+        bird = Bird()
+        pipes = []
+        score = 0
+        running = True
+        restart = False
+        # Reset bird position
+        bird.y = SCREEN_HEIGHT // 2
         clock.tick(30)
-
+        
 # Quit Pygame
 pygame.quit()
