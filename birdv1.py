@@ -1,8 +1,8 @@
 import sys
 import pygame
 import random
-from policy import *
-# from policy import policy_network
+import json
+
 
 # Initialize Pygame
 pygame.init()
@@ -64,6 +64,59 @@ pipes = []
 score = 0
 collision = False
 
+
+# Define Q-learning parameters
+LEARNING_RATE = 0.1
+DISCOUNT_FACTOR = 0.99
+EXPLORATION_RATE = 0.1
+
+# Initialize Q-table
+q_table = {}
+
+def state_to_string(state):
+    return str(tuple(state))
+
+def initialize_q_table():
+    for x in range(-600, 600 + 1):
+        for v in range(-10, 32 + 1):
+            for d in range(0, 400 + 1):
+                state = (x, v, d)
+                q_table[state_to_string(state)] = [0, 0]  # Q-values for flap and don't flap
+
+
+def choose_action(state):
+    if random.random() < EXPLORATION_RATE:
+        return random.choice([0, 1])  # Explore: choose randomly between flap (1) and don't flap (0)
+    else:
+        return q_table[state_to_string(state)].index(max(q_table[state_to_string(state)]))  # Exploit: choose action with highest Q-value
+
+def update_q_table(state, action, reward, next_state):
+    q_value = q_table[state_to_string(state)][action]
+    max_next_q_value = max(q_table[state_to_string(next_state)])
+    new_q_value = q_value + LEARNING_RATE * (reward + DISCOUNT_FACTOR * max_next_q_value - q_value)
+    q_table[state_to_string(state)][action] = new_q_value
+
+    
+
+def policy_network(bird):
+    action = choose_action(get_state())
+    state = get_state()
+    total_reward = 0
+    action = choose_action(get_state())
+    if action == 1:
+        bird.flap()
+    bird.update()
+    next_state = get_state()
+    reward = 1 if bird.collided else 0
+    total_reward += reward
+    update_q_table(state, action, reward, next_state)
+    state = next_state
+    # print(f"Total Reward = {total_reward}")
+
+    
+    
+
+
 def collided():
     return collision
 
@@ -94,6 +147,8 @@ def display_score():
 running = True
 clock = pygame.time.Clock()
 episode = 0
+initialize_q_table()
+
 while running:
     episode += 1
     restart = False  # Initialize restart flag
@@ -105,7 +160,7 @@ while running:
     
     while not restart:
         state = get_state()
-        print(state)
+        # print(state)
         states.append(state)
         action = policy_network(bird)  # Sample action from policy network
         for event in pygame.event.get():
@@ -120,7 +175,8 @@ while running:
                 if event.key == pygame.K_SPACE:
                     bird.flap()
         
-            
+
+
 
         # Update bird
         bird.update()
@@ -159,7 +215,7 @@ while running:
         pygame.display.update()
 
         # Cap the frame rate
-        clock.tick()
+        clock.tick(30)
 
     print(f"Score --> {display_score()}")
     # print(states)
@@ -176,7 +232,7 @@ while running:
         restart = False
         # Reset bird position
         bird.y = SCREEN_HEIGHT // 2
-        clock.tick()
+        clock.tick(30)
         
 # Quit Pygame
 pygame.quit()
